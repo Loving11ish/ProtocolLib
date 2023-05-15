@@ -44,6 +44,9 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.tcoded.folialib.FoliaLib;
+import com.tcoded.folialib.wrapper.WrappedTask;
 import org.bukkit.Server;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
@@ -58,6 +61,8 @@ import org.bukkit.plugin.java.JavaPlugin;
  */
 public class ProtocolLib extends JavaPlugin {
 
+    private static ProtocolLib plugin;
+    private static FoliaLib foliaLib;
     // Every possible error or warning report type
     public static final ReportType REPORT_CANNOT_DELETE_CONFIG = new ReportType(
             "Cannot delete old ProtocolLib configuration.");
@@ -98,7 +103,8 @@ public class ProtocolLib extends JavaPlugin {
 
     private Statistics statistics;
 
-    private int packetTask = -1;
+    private WrappedTask wrappedTask = null;
+//    private int packetTask = -1;
     private int tickCounter = 0;
     private int configExpectedMod = -1;
 
@@ -303,6 +309,8 @@ public class ProtocolLib extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        plugin = this;
+        foliaLib = new FoliaLib(this);
         try {
             Server server = this.getServer();
             PluginManager manager = server.getPluginManager();
@@ -485,12 +493,12 @@ public class ProtocolLib extends JavaPlugin {
 
     private void createPacketTask(Server server) {
         try {
-            if (this.packetTask >= 0) {
+            if (this.wrappedTask != null) {
                 throw new IllegalStateException("Packet task has already been created");
             }
 
             // Attempt to create task
-            this.packetTask = server.getScheduler().scheduleSyncRepeatingTask(this, () -> {
+            this.wrappedTask = foliaLib.getImpl().runTimer(() -> {
                 AsyncFilterManager manager = (AsyncFilterManager) protocolManager.getAsynchronousManager();
 
                 // We KNOW we're on the main thread at the moment
@@ -503,11 +511,25 @@ public class ProtocolLib extends JavaPlugin {
                 if (!ProtocolLibrary.updatesDisabled() && (ProtocolLib.this.tickCounter % 20) == 0) {
                     ProtocolLib.this.checkUpdates();
                 }
-            }, ASYNC_MANAGER_DELAY, ASYNC_MANAGER_DELAY);
+            }, 50L, 50L, TimeUnit.MILLISECONDS);
+//            this.packetTask = server.getScheduler().scheduleSyncRepeatingTask(this, () -> {
+//                AsyncFilterManager manager = (AsyncFilterManager) protocolManager.getAsynchronousManager();
+//
+//                // We KNOW we're on the main thread at the moment
+//                manager.sendProcessedPackets(ProtocolLib.this.tickCounter++, true);
+//
+//                // House keeping
+//                ProtocolLib.this.updateConfiguration();
+//
+//                // Check for updates too
+//                if (!ProtocolLibrary.updatesDisabled() && (ProtocolLib.this.tickCounter % 20) == 0) {
+//                    ProtocolLib.this.checkUpdates();
+//                }
+//            }, ASYNC_MANAGER_DELAY, ASYNC_MANAGER_DELAY);
         } catch (OutOfMemoryError e) {
             throw e;
         } catch (Throwable e) {
-            if (this.packetTask == -1) {
+            if (this.wrappedTask == null) {
                 reporter.reportDetailed(this, Report.newBuilder(REPORT_CANNOT_CREATE_TIMEOUT_TASK).error(e));
             }
         }
@@ -566,9 +588,12 @@ public class ProtocolLib extends JavaPlugin {
         }
 
         // Clean up
-        if (this.packetTask >= 0) {
-            this.getServer().getScheduler().cancelTask(this.packetTask);
-            this.packetTask = -1;
+        if (this.wrappedTask != null) {
+            this.wrappedTask.cancel();
+            this.wrappedTask = null;
+            foliaLib = null;
+//            this.getServer().getScheduler().cancelTask(this.packetTask);
+//            this.packetTask = -1;
         }
 
         // And redirect handler too
@@ -610,5 +635,13 @@ public class ProtocolLib extends JavaPlugin {
         PACKET,
         PROTOCOL,
         LOGGING
+    }
+
+    public static ProtocolLib getPlugin() {
+        return plugin;
+    }
+
+    public static FoliaLib getFoliaLib() {
+        return foliaLib;
     }
 }

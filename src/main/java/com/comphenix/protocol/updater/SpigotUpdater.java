@@ -16,9 +16,11 @@
  */
 package com.comphenix.protocol.updater;
 
+import com.comphenix.protocol.ProtocolLib;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.error.Report;
 import com.comphenix.protocol.utility.Closer;
+import com.tcoded.folialib.FoliaLib;
 import org.bukkit.plugin.Plugin;
 
 import java.io.BufferedReader;
@@ -26,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Adapted version of the Bukkit updater for use with Spigot resources
@@ -80,7 +83,8 @@ public final class SpigotUpdater extends Updater {
             } finally {
                 // Invoke the listeners on the main thread
                 for (Runnable listener : listeners) {
-                    plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, listener);
+                    ProtocolLib.getFoliaLib().getImpl().runLater(listener, 50L, TimeUnit.MILLISECONDS);
+//                    plugin.getServer().getScheduler().scheduleSyncDelayedTask(plugin, listener);
                 }
             }
         }

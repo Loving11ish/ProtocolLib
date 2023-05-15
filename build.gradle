@@ -30,9 +30,15 @@ repositories {
             ignoreGradleMetadataRedirection()
         }
     }
+
+    maven {
+        name = "devmart-other"
+        url = "https://nexuslite.gcnt.net/repos/other/"
+    }
 }
 
 dependencies {
+    implementation "com.tcoded:FoliaLib:0.2.0"
     implementation 'net.bytebuddy:byte-buddy:1.14.3'
     compileOnly 'org.spigotmc:spigot-api:1.19.4-R0.1-SNAPSHOT'
     compileOnly 'org.spigotmc:spigot:1.19.4-R0.1-SNAPSHOT'
@@ -62,8 +68,10 @@ java {
 shadowJar {
     dependencies {
         include(dependency('net.bytebuddy:byte-buddy:.*'))
+        include(dependency('com.tcoded:FoliaLib:.*'))
     }
     relocate 'net.bytebuddy', 'com.comphenix.net.bytebuddy'
+    relocate 'com.tcoded.folialib', 'com.comphenix.tcoded.folialib'
     archiveFileName = 'ProtocolLib.jar'
 }
 
